@@ -3,7 +3,7 @@ import { NavBar, GamePanel, ActionButton, MetricBar, LoadingDots } from "../comp
 import { generateFinalReport } from "../hooks/useClaudeAI";
 import { SCREENS } from "../App";
 
-export default function ResultScreen({ gameState, updateGameState, navigate }) {
+export default function ResultScreen({ gameState, updateGameState, navigate, onNavigate, activePage }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
 

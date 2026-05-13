@@ -8,26 +8,27 @@ export function NavBar({ onNavigate, activePage }) {
     { id: "contact",  label: "Contatos" },
   ];
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4"
-      style={{ background: "rgba(30,10,60,0.55)", backdropFilter: "blur(12px)" }}>
-      <button onClick={() => onNavigate?.("home")}>
-        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-          <rect x="2" y="10" width="32" height="20" rx="5" stroke="white" strokeWidth="2" fill="none"/>
-          <circle cx="11" cy="20" r="3" stroke="white" strokeWidth="2" fill="none"/>
-          <circle cx="25" cy="20" r="3" stroke="white" strokeWidth="2" fill="none"/>
-          <rect x="15" y="8" width="6" height="4" rx="2" fill="white" opacity="0.6"/>
-          <rect x="8" y="17" width="2" height="6" rx="1" fill="white"/>
-          <rect x="6" y="19" width="6" height="2" rx="1" fill="white"/>
-          <rect x="23" y="19" width="6" height="2" rx="1" fill="white"/>
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-12 py-6"
+      style={{ background: "rgba(30,10,60,0.4)", backdropFilter: "blur(16px)" }}>
+      {/* Logo */}
+      <button onClick={() => onNavigate?.("home")} className="flex items-center gap-2">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <rect x="3" y="12" width="34" height="22" rx="6" stroke="white" strokeWidth="2.2" fill="none"/>
+          <circle cx="12" cy="23" r="3.5" stroke="white" strokeWidth="2" fill="none"/>
+          <circle cx="28" cy="23" r="3.5" stroke="white" strokeWidth="2" fill="none"/>
+          <rect x="16" y="9" width="8" height="5" rx="2.5" fill="white" opacity="0.7"/>
+          <rect x="8.5" y="19.5" width="2.5" height="7" rx="1.25" fill="white"/>
+          <rect x="6.5" y="22" width="7" height="2.5" rx="1.25" fill="white"/>
+          <rect x="25.5" y="22" width="7" height="2.5" rx="1.25" fill="white"/>
         </svg>
       </button>
-      <div className="flex gap-8 text-white text-sm font-medium">
+      <div className="flex gap-10 text-white text-sm font-medium tracking-wide">
         {pages.map(({ id, label }) => (
           <button key={id} onClick={() => onNavigate?.(id)}
             className="transition-all duration-200 hover:opacity-100"
             style={{
               opacity: activePage === id ? 1 : 0.6,
-              borderBottom: activePage === id ? "2px solid #e05080" : "2px solid transparent",
+              borderBottom: activePage === id ? "2px solid rgba(255,255,255,0.8)" : "2px solid transparent",
               paddingBottom: "2px",
             }}>
             {label}
@@ -48,7 +49,6 @@ export function GamePanel({ children, className = "" }) {
         borderRadius: "16px",
         boxShadow: "0 0 40px rgba(100,50,200,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
       }}>
-      {/* Corner decorations */}
       {["top-0 left-0 rounded-tl-2xl", "top-0 right-0 rounded-tr-2xl",
         "bottom-0 left-0 rounded-bl-2xl", "bottom-0 right-0 rounded-br-2xl"].map((pos, i) => (
         <div key={i} className={`absolute ${pos} w-6 h-6`}
@@ -140,7 +140,7 @@ export function MetricsSidebar({ metrics, currentScenario, totalScenarios, preci
 export function ActionButton({ children, onClick, variant = "primary", disabled = false, className = "" }) {
   const base = "px-6 py-3 rounded-full font-bold text-white transition-all duration-200 cursor-pointer select-none";
   const styles = {
-    primary: { background: "linear-gradient(90deg, #e05080, #c03060)", boxShadow: "0 4px 20px rgba(200,50,100,0.4)" },
+    primary: { background: "linear-gradient(90deg, #e53e3e, #ed8936)", boxShadow: "0 4px 20px rgba(229,62,62,0.4)" },
     secondary: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)" },
     ghost: { background: "transparent", border: "1px solid rgba(255,255,255,0.3)" },
   };

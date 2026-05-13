@@ -1,26 +1,16 @@
-/**
- * useClaudeAI — encapsula todas as chamadas à API da Anthropic.
- * Troca "claude-sonnet-4-20250514" por qualquer outro modelo se necessário.
- */
-
-const BACKEND_URL = "http://localhost:3001/api/gemini";
+const BACKEND_URL = "http://localhost:3001/api/chat";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-async function callClaude(systemPrompt, userMessage, maxTokens = 800) {
-  const res = await fetch(API_URL, {
+async function callAI(systemPrompt, userMessage, maxTokens = 800) {
+  const res = await fetch(BACKEND_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
-    }),
+    body: JSON.stringify({ systemPrompt, userMessage, maxTokens }),
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   const data = await res.json();
-  return data.content?.[0]?.text ?? "";
+  return data.text ?? "";
 }
 
 function parseJSON(raw) {
@@ -44,17 +34,13 @@ function buildContext(gameState) {
 Você é a IA Narradora do jogo Culture Quest.
 Arquétipo do jogador: ${archetypeMap[gameState.archetype] ?? gameState.archetype}
 Empresa: ${gameState.companySize} porte, setor de ${gameState.sector}
-Métricas atuais: Reputação ${gameState.metrics.reputacao}%, Cultura ${gameState.metrics.cultura}%, 
+Métricas atuais: Reputação ${gameState.metrics.reputacao}%, Cultura ${gameState.metrics.cultura}%,
 Ética ${gameState.metrics.etica}%, Produtividade ${gameState.metrics.produtividade}%
 `.trim();
 }
 
 // ── Funções exportadas ───────────────────────────────────────────────────────
 
-/**
- * Gera um dilema corporativo com 4 opções de escolha.
- * Retorna: { situation, options: [{id,text}], isCritical }
- */
 export async function generateScenario(gameState, scenarioIndex) {
   const system = `${buildContext(gameState)}
 Você gera dilemas corporativos realistas em JSON. Responda APENAS com JSON válido, sem markdown, sem texto extra.`;
@@ -77,16 +63,12 @@ Formato obrigatório:
 
 isCritical deve ser true no cenário ${Math.ceil(gameState.totalScenarios / 2)} (momento crítico de texto livre).`;
 
-  const raw = await callClaude(system, user, 600);
+  const raw = await callAI(system, user, 600);
   const parsed = parseJSON(raw);
   if (!parsed) throw new Error("Resposta inválida da IA ao gerar cenário");
   return parsed;
 }
 
-/**
- * Avalia a escolha de múltipla opção do jogador.
- * Retorna: { feedback, metricsDelta, precisionDelta, isCorrect }
- */
 export async function evaluateChoice(gameState, situation, chosenOption) {
   const system = `${buildContext(gameState)}
 Você avalia decisões corporativas. Responda APENAS com JSON válido, sem markdown.`;
@@ -108,16 +90,12 @@ Retorne:
   }
 }`;
 
-  const raw = await callClaude(system, user, 400);
+  const raw = await callAI(system, user, 400);
   const parsed = parseJSON(raw);
   if (!parsed) throw new Error("Resposta inválida da IA ao avaliar escolha");
   return parsed;
 }
 
-/**
- * Avalia texto livre do momento crítico.
- * Retorna: { feedback, tone, metricsDelta, precisionDelta }
- */
 export async function evaluateTextResponse(gameState, situation, playerText) {
   const system = `${buildContext(gameState)}
 Você avalia respostas escritas em momentos críticos. Analise conteúdo, tom e eficácia.
@@ -140,16 +118,12 @@ Retorne:
   }
 }`;
 
-  const raw = await callClaude(system, user, 500);
+  const raw = await callAI(system, user, 500);
   const parsed = parseJSON(raw);
   if (!parsed) throw new Error("Resposta inválida da IA ao avaliar texto");
   return parsed;
 }
 
-/**
- * Gera o feedback final da jornada.
- * Retorna: { summary, strengths, improvements, verdict }
- */
 export async function generateFinalReport(gameState) {
   const system = `${buildContext(gameState)}
 Você gera relatórios finais de desempenho. Seja específico, use o histórico de escolhas.
@@ -171,7 +145,7 @@ Retorne:
   "verdict": "Aprovado" | "Reprovado" | "Em desenvolvimento"
 }`;
 
-  const raw = await callClaude(system, user, 500);
+  const raw = await callAI(system, user, 500);
   const parsed = parseJSON(raw);
   if (!parsed) throw new Error("Resposta inválida da IA ao gerar relatório");
   return parsed;

@@ -8,20 +8,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const MODEL = "gemini-2.0-flash-lite";
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const MODEL = "llama-3.3-70b-versatile";
 
-app.post("/api/gemini", async (req, res) => {
+app.post("/api/chat", async (req, res) => {
   const { systemPrompt, userMessage, maxTokens = 800 } = req.body;
 
   try {
-    const response = await fetch(`${API_URL}?key=${process.env.GEMINI_API_KEY}`, {
+    const response = await fetch(GROQ_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+      },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: userMessage }] }],
-        generationConfig: { maxOutputTokens: maxTokens, temperature: 0.8 },
+        model: MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+        max_tokens: maxTokens,
+        temperature: 0.8,
       }),
     });
 
@@ -31,7 +39,7 @@ app.post("/api/gemini", async (req, res) => {
       return res.status(response.status).json({ error: data });
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    const text = data.choices?.[0]?.message?.content ?? "";
     res.json({ text });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -39,4 +47,4 @@ app.post("/api/gemini", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`✅ Server rodando em http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Server rodando em http://localhost:${PORT}`));
