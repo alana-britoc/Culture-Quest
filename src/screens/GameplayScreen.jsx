@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { MetricsSidebar, ActionButton, OptionCard, LoadingDots } from "../components/UI";
-import { generateScenario, evaluateChoice, evaluateTextResponse } from "../hooks/useClaudeAI";
+import { generateScenario, evaluateChoice, evaluateTextResponse, GameError } from "../hooks/useClaudeAI";
 
 const S = { LOADING: 0, CHOOSING: 1, TEXT: 2, EVALUATING: 3, FEEDBACK: 4 };
 
@@ -26,7 +26,12 @@ export default function GameplayScreen({ gameState, updateGameState, updateMetri
       const s = await generateScenario(gameState, gameState.currentScenario);
       setScenario(s);
       setState(s.isCritical ? S.TEXT : S.CHOOSING);
-    } catch { setError("Erro ao carregar. Verifique a conexao."); }
+    } catch (err) {
+      const msg = err instanceof GameError ? err.message : "Algo deu errado ao gerar o cenario.";
+      const canRetry = err instanceof GameError ? err.retryable : true;
+      setError({ msg, canRetry });
+      setState(S.CHOOSING);
+    }
   };
 
   const submitChoice = async () => {
@@ -35,7 +40,11 @@ export default function GameplayScreen({ gameState, updateGameState, updateMetri
     try {
       const ev = await evaluateChoice(gameState, scenario.situation, selected);
       applyResult(ev, `${selected.id}. ${selected.text}`);
-    } catch { setError("Erro ao avaliar."); setState(S.CHOOSING); }
+    } catch (err) {
+      const msg = err instanceof GameError ? err.message : "Erro ao avaliar sua resposta.";
+      setError({ msg, canRetry: true });
+      setState(S.CHOOSING);
+    }
   };
 
   const submitText = async () => {
@@ -44,7 +53,11 @@ export default function GameplayScreen({ gameState, updateGameState, updateMetri
     try {
       const ev = await evaluateTextResponse(gameState, scenario.situation, text);
       applyResult(ev, text);
-    } catch { setError("Erro ao avaliar."); setState(S.TEXT); }
+    } catch (err) {
+      const msg = err instanceof GameError ? err.message : "Erro ao avaliar seu texto.";
+      setError({ msg, canRetry: true });
+      setState(S.TEXT);
+    }
   };
 
   const applyResult = (ev, answer) => {
@@ -80,9 +93,11 @@ export default function GameplayScreen({ gameState, updateGameState, updateMetri
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl text-sm text-red-400 bg-red-500/[0.06] border border-red-500/15">
-            {error}
-            <button onClick={load} className="ml-2 underline opacity-70 hover:opacity-100">Tentar novamente</button>
+          <div className="mb-4 p-4 rounded-xl text-sm text-red-400 bg-red-500/[0.06] border border-red-500/15 animate-in">
+            <p>{typeof error === "string" ? error : error.msg}</p>
+            {typeof error !== "string" && error.canRetry && (
+              <button onClick={load} className="mt-2 text-xs text-red-400/60 hover:text-red-400 underline underline-offset-2 transition-colors">Tentar novamente</button>
+            )}
           </div>
         )}
 

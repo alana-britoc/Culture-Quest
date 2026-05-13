@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { MetricsSidebar, ActionButton, LoadingDots } from "../components/UI";
-import { generateOnboarding } from "../hooks/useClaudeAI";
+import { generateOnboarding, GameError } from "../hooks/useClaudeAI";
 
 const FALLBACK = {
   messages: [
@@ -24,10 +24,17 @@ export default function OnboardingScreen({ gameState, updateGameState, navigate,
   const [selectedOption, setOption] = useState(null);
   const [customText, setCustomText] = useState("");
 
+  const [errorMsg, setErrorMsg] = useState(null);
+
   useEffect(() => {
     generateOnboarding(gameState)
       .then((d) => { setData(d); setStep(0); })
-      .catch(() => { setData(FALLBACK); setStep(0); })
+      .catch((err) => {
+        const msg = err instanceof GameError ? err.message : "Nao conseguiu carregar as mensagens. Usando mensagens padrao.";
+        setErrorMsg(msg);
+        setData(FALLBACK);
+        setStep(0);
+      })
       .finally(() => setLoadingAI(false));
   }, []);
 
@@ -78,6 +85,13 @@ export default function OnboardingScreen({ gameState, updateGameState, navigate,
             <p className={`text-[11px] ${typing ? "text-accent-400" : "text-green-500"}`}>{typing ? "digitando..." : "online"}</p>
           </div>
         </div>
+
+        {/* Error banner */}
+        {errorMsg && (
+          <div className="mb-4 p-3 rounded-xl text-xs text-yellow-400/80 bg-yellow-500/[0.06] border border-yellow-500/15">
+            {errorMsg}
+          </div>
+        )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto space-y-3 mb-4">

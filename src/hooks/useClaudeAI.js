@@ -2,17 +2,88 @@ const BACKEND_URL = window.location.hostname === "localhost"
   ? "http://localhost:3001/api/chat"
   : "/api/chat";
 
+// ── Erros amigáveis ──────────────────────────────────────────────────────────
+
+export class GameError extends Error {
+  constructor(message, type, retryable = false) {
+    super(message);
+    this.type = type;
+    this.retryable = retryable;
+  }
+}
+
+const ERROR_MAP = {
+  rate_limit: {
+    message: "A IA precisou de uma pausa! O limite de uso diario foi atingido. Tente novamente em alguns segundos.",
+    retryable: true,
+  },
+  network: {
+    message: "Sem conexao com o servidor. Verifique sua internet e tente novamente.",
+    retryable: true,
+  },
+  auth: {
+    message: "Erro de configuracao com a IA. Avise quem configurou o jogo!",
+    retryable: false,
+  },
+  parse: {
+    message: "A IA voltou uma resposta maluca e nao conseguimos entender. Tente de novo!",
+    retryable: true,
+  },
+  server: {
+    message: "O servidor esta com problemas. Tente novamente em alguns segundos.",
+    retryable: true,
+  },
+  timeout: {
+    message: "A IA demorou demais pra responder. Tente novamente!",
+    retryable: true,
+  },
+  unknown: {
+    message: "Algo deu errado, mas nao sabemos o que. Tente de novo!",
+    retryable: true,
+  },
+};
+
+function handleError(err) {
+  // Rate limit
+  if (err?.message?.includes("rate_limit") || err?.message?.includes("429")) {
+    throw new GameError(ERROR_MAP.rate_limit.message, "rate_limit", true);
+  }
+  // Auth
+  if (err?.message?.includes("401") || err?.message?.includes("403")) {
+    throw new GameError(ERROR_MAP.auth.message, "auth", false);
+  }
+  // Network
+  if (err?.message?.includes("Failed to fetch") || err?.message?.includes("NetworkError") || err?.message?.includes("fetch failed")) {
+    throw new GameError(ERROR_MAP.network.message, "network", true);
+  }
+  // Server
+  if (err?.message?.includes("500") || err?.message?.includes("502") || err?.message?.includes("503")) {
+    throw new GameError(ERROR_MAP.server.message, "server", true);
+  }
+  // Fallback
+  throw new GameError(ERROR_MAP.unknown.message, "unknown", true);
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function callAI(systemPrompt, userMessage, maxTokens = 800) {
-  const res = await fetch(BACKEND_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ systemPrompt, userMessage, maxTokens }),
-  });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const data = await res.json();
-  return data.text ?? "";
+  try {
+    const res = await fetch(BACKEND_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ systemPrompt, userMessage, maxTokens }),
+    });
+
+    if (!res.ok) {
+      handleError(new Error(`API error: ${res.status}`));
+    }
+
+    const data = await res.json();
+    return data.text ?? "";
+  } catch (err) {
+    if (err instanceof GameError) throw err;
+    handleError(err);
+  }
 }
 
 function parseJSON(raw) {
@@ -75,7 +146,7 @@ Formato:
 
   const raw = await callAI(system, user, 600);
   const parsed = parseJSON(raw);
-  if (!parsed) throw new Error("Resposta inválida da IA ao gerar onboarding");
+  if (!parsed) throw new GameError(ERROR_MAP.parse.message, "parse", true);
   return parsed;
 }
 
@@ -105,7 +176,7 @@ isCritical deve ser true APENAS no cenário ${Math.ceil(gameState.totalScenarios
 
   const raw = await callAI(system, user, 600);
   const parsed = parseJSON(raw);
-  if (!parsed) throw new Error("Resposta inválida da IA ao gerar cenário");
+  if (!parsed) throw new GameError(ERROR_MAP.parse.message, "parse", true);
   return parsed;
 }
 
@@ -132,7 +203,7 @@ Retorne:
 
   const raw = await callAI(system, user, 400);
   const parsed = parseJSON(raw);
-  if (!parsed) throw new Error("Resposta inválida da IA ao avaliar escolha");
+  if (!parsed) throw new GameError(ERROR_MAP.parse.message, "parse", true);
   return parsed;
 }
 
@@ -161,7 +232,7 @@ Retorne:
 
   const raw = await callAI(system, user, 500);
   const parsed = parseJSON(raw);
-  if (!parsed) throw new Error("Resposta inválida da IA ao avaliar texto");
+  if (!parsed) throw new GameError(ERROR_MAP.parse.message, "parse", true);
   return parsed;
 }
 
@@ -191,6 +262,6 @@ Retorne:
 
   const raw = await callAI(system, user, 600);
   const parsed = parseJSON(raw);
-  if (!parsed) throw new Error("Resposta inválida da IA ao gerar relatório");
+  if (!parsed) throw new GameError(ERROR_MAP.parse.message, "parse", true);
   return parsed;
 }

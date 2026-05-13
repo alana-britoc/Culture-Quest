@@ -1,24 +1,29 @@
 import { useState, useEffect } from "react";
 import { ActionButton, MetricBar, LoadingDots } from "../components/UI";
-import { generateFinalReport } from "../hooks/useClaudeAI";
+import { generateFinalReport, GameError } from "../hooks/useClaudeAI";
 import { SCREENS } from "../App";
 
 export default function ResultScreen({ gameState, updateGameState, navigate }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showNarrative, setShowNarrative] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
 
   useEffect(() => {
     generateFinalReport(gameState)
       .then(setReport)
-      .catch(() => setReport({
-        summary: "Jornada concluida! A IA dormiu no ponto, mas suas metricas nao mentem.",
-        strengths: ["Sobreviveu a todos os cenarios"],
-        improvements: ["A IA nao quer julgar voce hoje"],
-        verdict: gameState.precision >= 90 ? "Aprovado" : "Em desenvolvimento",
-        title: "O Sobrevivente Corporativo",
-        narrative: "Depois de 5 cenarios intensos, voce ainda esta de pe. Parabens? Talvez. O RH vai entrar em contato.",
-      }))
+      .catch((err) => {
+        const msg = err instanceof GameError ? err.message : "A IA nao conseguiu gerar o relatorio, mas suas metricas estao ai embaixo!";
+        setErrorMsg(msg);
+        setReport({
+          summary: msg,
+          strengths: ["Completou todos os cenarios"],
+          improvements: ["Tente novamente para feedback completo"],
+          verdict: gameState.precision >= 90 ? "Aprovado" : "Em desenvolvimento",
+          title: "O Sobrevivente Corporativo",
+          narrative: "Depois de 5 cenarios intensos, voce ainda esta de pe. O RH vai entrar em contato... talvez.",
+        });
+      })
       .finally(() => setLoading(false));
   }, []);
 
