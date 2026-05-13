@@ -1,176 +1,172 @@
-import { useState } from "react";
-import { NavBar, GamePanel, MetricsSidebar, ActionButton, LoadingDots } from "../components/UI";
+import { useState, useEffect } from "react";
+import { MetricsSidebar, ActionButton, LoadingDots } from "../components/UI";
+import { generateOnboarding } from "../hooks/useClaudeAI";
 
-const ONBOARDING_MESSAGES = [
-  "Olá! Seja bem-vindo à empresa. Sou seu gerente. Antes de começar, quero te contar como funcionamos aqui. 😄",
-  "Aqui valorizamos a transparência e a comunicação direta. Problemas aparecem — o que importa é como você lida com eles.",
-  "Você vai enfrentar 5 situações reais do dia a dia corporativo. Suas respostas vão impactar sua reputação e as métricas da empresa. Pronto para começar?",
-];
+const FALLBACK = {
+  messages: [
+    "Fala! Bem-vindo a empresa. Sou seu gerente — sim, aquele que manda 'vamos alinhar' toda segunda.",
+    "Aqui a gente valoriza transparencia... na teoria. Na pratica, tem gente que manda 'obrigado pelo feedback' e nunca mais fala com voce.",
+    "Voce vai enfrentar 5 situacoes reais. Umas serias, outras nem tanto. Tipo quando alguem rouba sua marmita. Pronto?",
+  ],
+  question: "Me conta: qual e aquele medo que te da gelo na barriga no primeiro dia de trabalho?",
+  options: [
+    "Alguem roubar minha marmita da geladeira",
+    "Mandar mensagem no grupo errado do WhatsApp",
+    "Ter que falar em reuniao com 30 pessoas olhando",
+  ],
+};
 
-const FEAR_OPTIONS = [
-  "Não conseguir me adaptar à cultura da empresa",
-  "Cometer erros que acabem prejudicando o time",
-  "Não conseguir me comunicar bem",
-];
+export default function OnboardingScreen({ gameState, updateGameState, navigate, SCREENS }) {
+  const [data, setData]             = useState(null);
+  const [loadingAI, setLoadingAI]   = useState(true);
+  const [step, setStep]             = useState(-1); // -1=loading, 0-2=messages, 3=ready btn, 4=fear question
+  const [typing, setTyping]         = useState(false);
+  const [selectedOption, setOption] = useState(null);
+  const [customText, setCustomText] = useState("");
 
-export default function OnboardingScreen({ gameState, updateGameState, navigate, SCREENS, onNavigate, activePage }) {
-  const [step, setStep]           = useState(0); // 0,1,2 = mensagens IA; 3 = aguardando "Sim"; 4 = pergunta medo; 5 = pronto
-  const [selectedFear, setFear]   = useState(null);
-  const [showTyping, setTyping]   = useState(false);
+  useEffect(() => {
+    generateOnboarding(gameState)
+      .then((d) => { setData(d); setStep(0); })
+      .catch(() => { setData(FALLBACK); setStep(0); })
+      .finally(() => setLoadingAI(false));
+  }, []);
 
-  const advanceStep = () => {
+  const msgs = data?.messages ?? FALLBACK.messages;
+
+  const advance = () => {
     if (step < 2) {
       setTyping(true);
-      setTimeout(() => { setTyping(false); setStep((s) => s + 1); }, 800);
+      setTimeout(() => { setTyping(false); setStep(s => s + 1); }, 800);
     } else {
-      setStep(3); // show "Sim, estou pronto!" button
+      setStep(3);
     }
   };
 
-  const confirmReady = () => {
+  const ready = () => {
     setTyping(true);
     setTimeout(() => { setTyping(false); setStep(4); }, 800);
   };
 
-  const startGame = () => {
-    if (!selectedFear) return;
+  const submit = () => {
+    const answer = customText.trim() || selectedOption;
+    if (!answer) return;
     updateGameState({ currentScenario: 0, precision: 50 });
     navigate(SCREENS.GAMEPLAY);
   };
 
-  const companyName = gameState.sector === "tecnologia" ? "TechFlow"
-    : gameState.sector === "financeiro" ? "BankCorp"
-    : gameState.sector === "saude" ? "MedPlus"
-    : "RetailMax";
+  const company = ({ tecnologia: "TechFlow", financeiro: "BankCorp", saude: "MedPlus" })[gameState.sector] ?? "RetailMax";
 
-  const visibleMessages = ONBOARDING_MESSAGES.slice(0, step + 1);
-
-  return (
-    <div className="min-h-screen flex flex-col">
-      <NavBar onNavigate={onNavigate} activePage={activePage} />
-      <div className="flex-1 flex gap-6 px-8 pt-24 pb-8 max-w-6xl mx-auto w-full">
-        {/* Chat area */}
-        <GamePanel className="flex-1 flex flex-col p-6 overflow-hidden">
-          {/* Manager header */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #60a0e8, #4080c8)" }}>
-              👔
-            </div>
-            <div>
-              <p className="text-white font-bold text-sm">Gerente — {companyName}</p>
-              {showTyping
-                ? <p className="text-green-400 text-xs">digitando...</p>
-                : <p className="text-green-400 text-xs">online</p>}
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto flex flex-col gap-3 mb-4 pr-2">
-            {visibleMessages.map((msg, i) => (
-              <div key={i} className="max-w-[85%]">
-                <div className="px-4 py-3 rounded-2xl rounded-tl-none text-sm text-gray-200 leading-relaxed"
-                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  {msg.replace("empresa", companyName)}
-                </div>
-              </div>
-            ))}
-
-            {showTyping && (
-              <div className="max-w-[85%]">
-                <div className="px-4 py-3 rounded-2xl rounded-tl-none"
-                  style={{ background: "rgba(255,255,255,0.07)" }}>
-                  <LoadingDots />
-                </div>
-              </div>
-            )}
-
-            {/* Player reply */}
-            {step >= 3 && (
-              <div className="flex justify-end">
-                <div className="px-4 py-3 rounded-2xl rounded-tr-none text-sm text-gray-200"
-                  style={{ background: "rgba(100,60,180,0.4)", border: "1px solid rgba(150,100,255,0.3)" }}>
-                  Sim, estou pronto!
-                </div>
-              </div>
-            )}
-
-            {/* Fear question */}
-            {step >= 4 && !showTyping && (
-              <div className="max-w-[85%]">
-                <div className="px-4 py-3 rounded-2xl rounded-tl-none text-sm text-gray-200"
-                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  Ótimo! Antes do primeiro desafio, me conta: qual é o seu maior medo no ambiente de trabalho?
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col gap-3">
-            {step < 3 && !showTyping && (
-              <button onClick={advanceStep}
-                className="w-full py-2 rounded-lg text-sm text-white/60 hover:text-white transition-colors"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                continuar...
-              </button>
-            )}
-
-            {step === 3 && (
-              <ActionButton onClick={confirmReady} className="w-full justify-center">
-                Sim, estou pronto!
-              </ActionButton>
-            )}
-
-            {step >= 4 && (
-              <>
-                <p className="text-white/40 text-xs">Escolha uma resposta:</p>
-                {FEAR_OPTIONS.map((opt) => (
-                  <button key={opt} onClick={() => setFear(opt)}
-                    className="text-left px-4 py-3 rounded-lg text-sm transition-all duration-200"
-                    style={{
-                      background: selectedFear === opt ? "rgba(200,80,120,0.25)" : "rgba(255,255,255,0.04)",
-                      border: `1px solid ${selectedFear === opt ? "rgba(220,100,140,0.7)" : "rgba(255,255,255,0.1)"}`,
-                      color: selectedFear === opt ? "#f9a8d4" : "rgba(255,255,255,0.7)",
-                    }}>
-                    {opt}
-                  </button>
-                ))}
-                <ActionButton onClick={startGame} disabled={!selectedFear} className="w-full justify-center mt-1">
-                  Responder e ir para o 1º desafio →
-                </ActionButton>
-              </>
-            )}
-          </div>
-        </GamePanel>
-
-        {/* Sidebar */}
-        <div className="flex flex-col gap-4">
-          <MetricsSidebar
-            metrics={gameState.metrics}
-            currentScenario={0}
-            totalScenarios={gameState.totalScenarios}
-            precision={50}
-          />
-          {/* Profile card */}
-          <div className="w-56 rounded-xl p-4"
-            style={{ background: "rgba(20,10,50,0.8)", border: "1px solid rgba(120,80,200,0.4)" }}>
-            <p className="text-white/50 text-xs mb-3 font-bold uppercase tracking-widest"
-              style={{ fontFamily: "'Courier New', monospace" }}>Seu perfil</p>
-            {[
-              ["Arquétipo", gameState.archetype === "estagiario" ? "Estagiário Caótico"
-                : gameState.archetype === "lider" ? "Líder Diplomata" : "Especialista Sincerão"],
-              ["Empresa", `${companyName} · ${gameState.companySize}`],
-              ["Setor", gameState.sector],
-            ].map(([k, v]) => (
-              <div key={k} className="mb-3 pb-3 border-b border-white/10 last:border-0 last:mb-0 last:pb-0">
-                <p className="text-white/40 text-xs">{k}</p>
-                <p className="text-white text-sm font-semibold capitalize">{v}</p>
-              </div>
-            ))}
-          </div>
+  if (loadingAI) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6">
+        <div className="text-center animate-in">
+          <div className="flex justify-center mb-4"><LoadingDots /></div>
+          <p className="text-sm text-white/25">Preparando seu primeiro dia...</p>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col lg:flex-row gap-6 px-6 pt-24 pb-8 max-w-5xl mx-auto w-full">
+      <div className="flex-1 surface-card p-5 flex flex-col min-h-[500px]">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/[0.06]">
+          <div className="w-9 h-9 rounded-full bg-accent-500/15 flex items-center justify-center text-base">👔</div>
+          <div>
+            <p className="text-sm font-semibold text-white/70">Gerente — {company}</p>
+            <p className={`text-[11px] ${typing ? "text-accent-400" : "text-green-500"}`}>{typing ? "digitando..." : "online"}</p>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto space-y-3 mb-4">
+          {msgs.slice(0, step + 1).map((msg, i) => (
+            <div key={i} className="max-w-[80%] animate-slide-up">
+              <div className="px-4 py-3 rounded-2xl rounded-tl-md text-sm text-white/60 leading-relaxed bg-white/[0.04] border border-white/[0.06]">
+                {msg}
+              </div>
+            </div>
+          ))}
+
+          {typing && (
+            <div className="max-w-[80%]">
+              <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-white/[0.04] border border-white/[0.06]">
+                <LoadingDots />
+              </div>
+            </div>
+          )}
+
+          {step >= 3 && (
+            <div className="flex justify-end animate-slide-up">
+              <div className="px-4 py-3 rounded-2xl rounded-tr-md text-sm text-white/80 bg-accent-500/10 border border-accent-500/20">
+                Bora! 💪
+              </div>
+            </div>
+          )}
+
+          {step >= 4 && !typing && data && (
+            <div className="max-w-[80%] animate-slide-up">
+              <div className="px-4 py-3 rounded-2xl rounded-tl-md text-sm text-white/60 bg-white/[0.04] border border-white/[0.06]">
+                {data.question ?? FALLBACK.question}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="space-y-2">
+          {step < 3 && !typing && (
+            <button onClick={advance}
+              className="w-full py-2.5 rounded-xl text-sm text-white/30 hover:text-white/60 bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] transition-all">
+              continuar...
+            </button>
+          )}
+
+          {step === 3 && (
+            <ActionButton onClick={ready} className="w-full">Bora! 💪</ActionButton>
+          )}
+
+          {step >= 4 && data && (
+            <>
+              <p className="text-[11px] text-white/20 uppercase tracking-wider">Escolha ou escreva:</p>
+
+              {/* AI-generated options */}
+              {(data.options ?? FALLBACK.options).map((opt) => (
+                <button key={opt} onClick={() => { setOption(opt); setCustomText(""); }}
+                  className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all ${
+                    selectedOption === opt && !customText
+                      ? "bg-accent-500/10 border border-accent-500/30 text-white"
+                      : "surface-card text-white/40 hover:text-white/60"
+                  }`}>
+                  {opt}
+                </button>
+              ))}
+
+              {/* Custom text input */}
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/15 text-xs">✍️</div>
+                <input
+                  type="text"
+                  value={customText}
+                  onChange={e => { setCustomText(e.target.value); setOption(null); }}
+                  placeholder="Ou escreva o seu medo aqui..."
+                  className="w-full px-4 py-3 pl-8 rounded-xl text-sm bg-white/[0.03] border border-white/[0.08] focus:border-accent-500/40 text-white/70 placeholder-white/15 transition-colors outline-none"
+                />
+              </div>
+
+              <ActionButton
+                onClick={submit}
+                disabled={!customText.trim() && !selectedOption}
+                className="w-full mt-1">
+                Que comecem os jogos →
+              </ActionButton>
+            </>
+          )}
+        </div>
+      </div>
+
+      <MetricsSidebar metrics={gameState.metrics} currentScenario={0} totalScenarios={gameState.totalScenarios} precision={50} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavBar } from "./components/UI";
+import { NavBar, ScreenTransition } from "./components/UI";
 import { MissionPage, NewsPage, TutorialPage, ContactPage } from "./components/StaticPages";
 import HomeScreen from "./screens/HomeScreen";
 import ArchetypeScreen from "./screens/ArchetypeScreen";
@@ -9,12 +9,8 @@ import GameplayScreen from "./screens/GameplayScreen";
 import ResultScreen from "./screens/ResultScreen";
 
 export const SCREENS = {
-  HOME: "home",
-  ARCHETYPE: "archetype",
-  CONFIG: "config",
-  ONBOARDING: "onboarding",
-  GAMEPLAY: "gameplay",
-  RESULT: "result",
+  HOME: "home", ARCHETYPE: "archetype", CONFIG: "config",
+  ONBOARDING: "onboarding", GAMEPLAY: "gameplay", RESULT: "result",
 };
 
 const STATIC_PAGES = ["mission", "news", "tutorial", "contact"];
@@ -23,43 +19,28 @@ export default function App() {
   const [screen, setScreen] = useState(SCREENS.HOME);
   const [page, setPage] = useState(null);
   const [gameState, setGameState] = useState({
-    archetype: null,
-    companySize: null,
-    sector: null,
+    archetype: null, companySize: null, sector: null,
     metrics: { reputacao: 50, cultura: 50, etica: 50, produtividade: 50 },
-    precision: 0,
-    totalScenarios: 5,
-    currentScenario: 0,
-    scenarioHistory: [],
+    precision: 0, totalScenarios: 5, currentScenario: 0, scenarioHistory: [],
   });
 
-  const updateGameState = (partial) =>
-    setGameState((prev) => ({ ...prev, ...partial }));
-
-  const updateMetrics = (delta) =>
-    setGameState((prev) => ({
-      ...prev,
-      metrics: {
-        reputacao:     Math.min(100, Math.max(0, prev.metrics.reputacao     + (delta.reputacao     ?? 0))),
-        cultura:       Math.min(100, Math.max(0, prev.metrics.cultura       + (delta.cultura       ?? 0))),
-        etica:         Math.min(100, Math.max(0, prev.metrics.etica         + (delta.etica         ?? 0))),
-        produtividade: Math.min(100, Math.max(0, prev.metrics.produtividade + (delta.produtividade ?? 0))),
-      },
-    }));
-
+  const updateGameState = (p) => setGameState((s) => ({ ...s, ...p }));
+  const updateMetrics = (d) => setGameState((s) => ({
+    ...s, metrics: Object.fromEntries(
+      Object.entries(s.metrics).map(([k, v]) => [k, Math.min(100, Math.max(0, v + (d[k] ?? 0)))])
+    ),
+  }));
   const navigate = (s) => { setPage(null); setScreen(s); };
-
   const handleNavBar = (id) => {
     if (id === "home") { setPage(null); setScreen(SCREENS.HOME); return; }
     if (STATIC_PAGES.includes(id)) { setPage(id); return; }
   };
 
   const activePage = page ?? screen;
-  const screenProps = { gameState, updateGameState, updateMetrics, navigate, SCREENS, onNavigate: handleNavBar, activePage };
+  const sp = { gameState, updateGameState, updateMetrics, navigate, SCREENS, onNavigate: handleNavBar, activePage };
 
   return (
-    <div className="min-h-screen w-full flex flex-col"
-      style={{ background: "linear-gradient(135deg, #3b1f6e 0%, #6b2fa0 40%, #c0478a 100%)" }}>
+    <div className="min-h-screen bg-surface-950 text-white">
       <NavBar onNavigate={handleNavBar} activePage={activePage} />
 
       {page === "mission"  && <MissionPage />}
@@ -67,12 +48,12 @@ export default function App() {
       {page === "tutorial" && <TutorialPage onStart={() => { setPage(null); setScreen(SCREENS.ARCHETYPE); }} />}
       {page === "contact"  && <ContactPage />}
 
-      {!page && screen === SCREENS.HOME       && <HomeScreen      {...screenProps} />}
-      {!page && screen === SCREENS.ARCHETYPE  && <ArchetypeScreen {...screenProps} />}
-      {!page && screen === SCREENS.CONFIG     && <ConfigScreen    {...screenProps} />}
-      {!page && screen === SCREENS.ONBOARDING && <OnboardingScreen {...screenProps} />}
-      {!page && screen === SCREENS.GAMEPLAY   && <GameplayScreen  {...screenProps} />}
-      {!page && screen === SCREENS.RESULT     && <ResultScreen    {...screenProps} />}
+      {!page && screen === SCREENS.HOME       && <ScreenTransition key="h"><HomeScreen      {...sp}/></ScreenTransition>}
+      {!page && screen === SCREENS.ARCHETYPE  && <ScreenTransition key="a"><ArchetypeScreen {...sp}/></ScreenTransition>}
+      {!page && screen === SCREENS.CONFIG     && <ScreenTransition key="c"><ConfigScreen    {...sp}/></ScreenTransition>}
+      {!page && screen === SCREENS.ONBOARDING && <ScreenTransition key="o"><OnboardingScreen{...sp}/></ScreenTransition>}
+      {!page && screen === SCREENS.GAMEPLAY   && <ScreenTransition key="g"><GameplayScreen  {...sp}/></ScreenTransition>}
+      {!page && screen === SCREENS.RESULT     && <ScreenTransition key="r"><ResultScreen    {...sp}/></ScreenTransition>}
     </div>
   );
 }

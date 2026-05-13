@@ -1,28 +1,28 @@
 import { useState, useEffect } from "react";
-import { NavBar, GamePanel, ActionButton, MetricBar, LoadingDots } from "../components/UI";
+import { ActionButton, MetricBar, LoadingDots } from "../components/UI";
 import { generateFinalReport } from "../hooks/useClaudeAI";
 import { SCREENS } from "../App";
 
-export default function ResultScreen({ gameState, updateGameState, navigate, onNavigate, activePage }) {
+export default function ResultScreen({ gameState, updateGameState, navigate }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showNarrative, setShowNarrative] = useState(false);
 
   useEffect(() => {
     generateFinalReport(gameState)
       .then(setReport)
       .catch(() => setReport({
-        summary: "Jornada concluída! Confira suas métricas acima.",
-        strengths: ["Completou todos os cenários"],
-        improvements: ["Continue praticando soft skills"],
+        summary: "Jornada concluida! A IA dormiu no ponto, mas suas metricas nao mentem.",
+        strengths: ["Sobreviveu a todos os cenarios"],
+        improvements: ["A IA nao quer julgar voce hoje"],
         verdict: gameState.precision >= 90 ? "Aprovado" : "Em desenvolvimento",
+        title: "O Sobrevivente Corporativo",
+        narrative: "Depois de 5 cenarios intensos, voce ainda esta de pe. Parabens? Talvez. O RH vai entrar em contato.",
       }))
       .finally(() => setLoading(false));
   }, []);
 
-  const verdictColor = report?.verdict === "Aprovado" ? "#4ade80"
-    : report?.verdict === "Reprovado" ? "#f87171" : "#facc15";
-
-  const resetGame = () => {
+  const reset = () => {
     updateGameState({
       archetype: null, companySize: null, sector: null,
       metrics: { reputacao: 50, cultura: 50, etica: 50, produtividade: 50 },
@@ -31,96 +31,92 @@ export default function ResultScreen({ gameState, updateGameState, navigate, onN
     navigate(SCREENS.HOME);
   };
 
+  const metrics = [
+    { label: "Precisao",     value: gameState.precision, emoji: "🎯" },
+    { label: "Reputacao",    value: gameState.metrics.reputacao, emoji: "👑" },
+    { label: "Etica",        value: gameState.metrics.etica, emoji: "⚖️" },
+    { label: "Cultura",      value: gameState.metrics.cultura, emoji: "🤝" },
+  ];
+
+  const verdictStyle = report?.verdict === "Aprovado"
+    ? "text-green-400 bg-green-500/10 border-green-500/20"
+    : report?.verdict === "Reprovado"
+    ? "text-red-400 bg-red-500/10 border-red-500/20"
+    : "text-yellow-400 bg-yellow-500/10 border-yellow-500/20";
+
+  const verdictEmoji = report?.verdict === "Aprovado" ? "🎉" : report?.verdict === "Reprovado" ? "💀" : "⚡";
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <NavBar onNavigate={onNavigate} activePage={activePage} />
-      <div className="flex-1 flex items-center justify-center pt-20 px-8 py-8">
-        <div className="w-full max-w-3xl">
-          <GamePanel className="p-8">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-8">
-              <div className="text-4xl">🚀</div>
-              <div>
-                <p className="text-white/50 text-sm">Jornada concluída</p>
-                <h2 className="text-white font-black text-2xl"
-                  style={{ fontFamily: "'Courier New', monospace", letterSpacing: "0.1em" }}>
-                  SUA JORNADA CHEGOU AO FIM
-                </h2>
+    <div className="min-h-screen flex items-center justify-center px-6 pt-24 pb-8">
+      <div className="w-full max-w-3xl surface-card p-8 lg:p-10 animate-in-scale">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="text-5xl mb-3">{verdictEmoji}</div>
+          <p className="text-[11px] text-white/25 uppercase tracking-wider mb-2">Sua jornada acabou</p>
+          {report?.title && !loading && (
+            <h2 className="text-3xl font-black tracking-tight text-gradient">{report.title}</h2>
+          )}
+          {loading && <div className="flex justify-center py-4"><LoadingDots /></div>}
+        </div>
+
+        {/* Metric cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          {metrics.map(({ label, value, emoji }) => {
+            const color = value >= 70 ? "text-green-400" : value >= 40 ? "text-yellow-400" : "text-red-400";
+            return (
+              <div key={label} className="surface-elevated p-4 text-center">
+                <p className="text-lg mb-0.5">{emoji}</p>
+                <p className={`text-2xl font-bold font-mono ${color}`}>{value}<span className="text-sm opacity-40">%</span></p>
+                <p className="text-[10px] text-white/25 mt-0.5">{label}</p>
               </div>
-            </div>
+            );
+          })}
+        </div>
 
-            {/* Metric cards */}
-            <div className="grid grid-cols-4 gap-4 mb-8">
-              {[
-                { label: "Precisão",     value: gameState.precision },
-                { label: "Reputação",    value: gameState.metrics.reputacao },
-                { label: "Ética",        value: gameState.metrics.etica },
-                { label: "Cultura",      value: gameState.metrics.cultura },
-              ].map(({ label, value }) => {
-                const color = value >= 70 ? "#4ade80" : value >= 40 ? "#facc15" : "#f87171";
-                return (
-                  <div key={label} className="rounded-xl p-4 text-center"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                    <p className="text-white/50 text-xs mb-1">{label}</p>
-                    <p className="font-black text-3xl" style={{ color, fontFamily: "'Courier New', monospace" }}>
-                      {value}%
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Bars */}
+        <div className="grid grid-cols-2 gap-x-8 mb-6">
+          <MetricBar label="Produtividade" value={gameState.metrics.produtividade} />
+          <MetricBar label="Reputacao"     value={gameState.metrics.reputacao} />
+        </div>
 
-            {/* Full metric bars */}
-            <div className="mb-8">
-              <MetricBar label="Produtividade" value={gameState.metrics.produtividade} />
-            </div>
-
-            {/* AI Report */}
-            <div className="rounded-xl p-6 mb-6"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
-              {loading ? (
-                <div className="flex flex-col items-center gap-3 py-4">
-                  <LoadingDots />
-                  <p className="text-white/40 text-sm">Gerando relatório final...</p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-white font-bold text-sm">Feedback da IA</p>
-                    {report?.verdict && (
-                      <span className="px-3 py-1 rounded-full text-xs font-bold"
-                        style={{ background: `${verdictColor}22`, color: verdictColor, border: `1px solid ${verdictColor}44` }}>
-                        {report.verdict}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-4">{report?.summary}</p>
-                  {report?.strengths?.length > 0 && (
-                    <div className="mb-3">
-                      <p className="text-green-400 text-xs font-bold mb-2">✓ Pontos fortes</p>
-                      {report.strengths.map((s, i) => (
-                        <p key={i} className="text-gray-400 text-xs ml-3">• {s}</p>
-                      ))}
-                    </div>
-                  )}
-                  {report?.improvements?.length > 0 && (
-                    <div>
-                      <p className="text-yellow-400 text-xs font-bold mb-2">↑ Pontos de melhoria</p>
-                      {report.improvements.map((s, i) => (
-                        <p key={i} className="text-gray-400 text-xs ml-3">• {s}</p>
-                      ))}
-                    </div>
-                  )}
-                </>
+        {/* AI Report */}
+        {!loading && (
+          <div className="surface-elevated p-5 mb-4 animate-in">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold">Feedback da IA</p>
+              {report?.verdict && (
+                <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${verdictStyle}`}>{report.verdict}</span>
               )}
             </div>
+            <p className="text-sm text-white/50 leading-relaxed mb-3">{report?.summary}</p>
+            {report?.strengths?.length > 0 && (
+              <div className="mb-2">
+                {report.strengths.map((s,i) => <p key={i} className="text-xs text-green-400/60 ml-3 mb-0.5">+ {s}</p>)}
+              </div>
+            )}
+            {report?.improvements?.length > 0 && (
+              <div>
+                {report.improvements.map((s,i) => <p key={i} className="text-xs text-yellow-400/50 ml-3 mb-0.5">↑ {s}</p>)}
+              </div>
+            )}
+          </div>
+        )}
 
-            {/* Actions */}
-            <div className="flex justify-between">
-              <ActionButton variant="ghost" onClick={resetGame}>← Jogar novamente</ActionButton>
-              <ActionButton onClick={resetGame}>Relatório completo →</ActionButton>
-            </div>
-          </GamePanel>
+        {/* Narrative ending - show on button click */}
+        {showNarrative && report?.narrative && (
+          <div className="surface-elevated p-5 mb-4 border-l-2 border-l-accent-500/40 animate-in-up">
+            <p className="text-[10px] text-accent-400 uppercase tracking-widest font-bold mb-2 font-mono">Final narrativo</p>
+            <p className="text-sm text-white/60 leading-relaxed italic">"{report.narrative}"</p>
+          </div>
+        )}
+
+        <div className="flex justify-between">
+          <ActionButton variant="ghost" onClick={reset}>← Jogar novamente</ActionButton>
+          {!showNarrative ? (
+            <ActionButton onClick={() => setShowNarrative(true)} disabled={loading}>Ver final narrativo →</ActionButton>
+          ) : (
+            <ActionButton onClick={reset}>Jogar novamente →</ActionButton>
+          )}
         </div>
       </div>
     </div>

@@ -1,36 +1,33 @@
-// ─── NavBar ────────────────────────────────────────────────────────────────
+// ─── ScreenTransition ────────────────────────────────────────────────────
+export function ScreenTransition({ children }) {
+  return <div className="animate-in-up">{children}</div>;
+}
+
+// ─── NavBar ──────────────────────────────────────────────────────────────
 export function NavBar({ onNavigate, activePage }) {
-  const pages = [
-    { id: "home",     label: "Home" },
-    { id: "mission",  label: "Mission" },
-    { id: "news",     label: "News" },
+  const items = [
+    { id: "home", label: "Home" },
+    { id: "mission", label: "Mission" },
+    { id: "news", label: "News" },
     { id: "tutorial", label: "Como jogar" },
-    { id: "contact",  label: "Contatos" },
+    { id: "contact", label: "Contatos" },
   ];
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-12 py-6"
-      style={{ background: "rgba(30,10,60,0.4)", backdropFilter: "blur(16px)" }}>
-      {/* Logo */}
-      <button onClick={() => onNavigate?.("home")} className="flex items-center gap-2">
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-          <rect x="3" y="12" width="34" height="22" rx="6" stroke="white" strokeWidth="2.2" fill="none"/>
-          <circle cx="12" cy="23" r="3.5" stroke="white" strokeWidth="2" fill="none"/>
-          <circle cx="28" cy="23" r="3.5" stroke="white" strokeWidth="2" fill="none"/>
-          <rect x="16" y="9" width="8" height="5" rx="2.5" fill="white" opacity="0.7"/>
-          <rect x="8.5" y="19.5" width="2.5" height="7" rx="1.25" fill="white"/>
-          <rect x="6.5" y="22" width="7" height="2.5" rx="1.25" fill="white"/>
-          <rect x="25.5" y="22" width="7" height="2.5" rx="1.25" fill="white"/>
-        </svg>
+    <nav className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 lg:px-10 border-b border-white/[0.06] bg-surface-950/80 backdrop-blur-xl">
+      <button onClick={() => onNavigate?.("home")} className="flex items-center gap-2.5 group">
+        <div className="w-8 h-8 rounded-lg bg-accent-500 flex items-center justify-center">
+          <span className="text-white text-xs font-bold tracking-tight">CQ</span>
+        </div>
+        <span className="text-sm font-semibold text-white/80 group-hover:text-white transition-colors hidden sm:inline">Culture Quest</span>
       </button>
-      <div className="flex gap-10 text-white text-sm font-medium tracking-wide">
-        {pages.map(({ id, label }) => (
+      <div className="flex items-center gap-1">
+        {items.map(({ id, label }) => (
           <button key={id} onClick={() => onNavigate?.(id)}
-            className="transition-all duration-200 hover:opacity-100"
-            style={{
-              opacity: activePage === id ? 1 : 0.6,
-              borderBottom: activePage === id ? "2px solid rgba(255,255,255,0.8)" : "2px solid transparent",
-              paddingBottom: "2px",
-            }}>
+            className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+              activePage === id
+                ? "text-white bg-white/[0.08]"
+                : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+            }`}>
             {label}
           </button>
         ))}
@@ -39,96 +36,45 @@ export function NavBar({ onNavigate, activePage }) {
   );
 }
 
-// ─── GamePanel ─────────────────────────────────────────────────────────────
-export function GamePanel({ children, className = "" }) {
+// ─── MetricBar ───────────────────────────────────────────────────────────
+export function MetricBar({ label, value }) {
+  const color = value >= 70 ? "bg-green-500" : value >= 40 ? "bg-yellow-500" : "bg-red-500";
+  const text  = value >= 70 ? "text-green-400" : value >= 40 ? "text-yellow-400" : "text-red-400";
   return (
-    <div className={`relative ${className}`}
-      style={{
-        background: "linear-gradient(160deg, #1a1035 0%, #0f0820 100%)",
-        border: "2px solid rgba(120,80,200,0.5)",
-        borderRadius: "16px",
-        boxShadow: "0 0 40px rgba(100,50,200,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
-      }}>
-      {["top-0 left-0 rounded-tl-2xl", "top-0 right-0 rounded-tr-2xl",
-        "bottom-0 left-0 rounded-bl-2xl", "bottom-0 right-0 rounded-br-2xl"].map((pos, i) => (
-        <div key={i} className={`absolute ${pos} w-6 h-6`}
-          style={{ background: "rgba(180,100,255,0.15)", border: "1px solid rgba(180,100,255,0.3)" }} />
-      ))}
-      {children}
-    </div>
-  );
-}
-
-// ─── PanelTitle ────────────────────────────────────────────────────────────
-export function PanelTitle({ children }) {
-  return (
-    <div className="flex justify-center mb-6">
-      <div className="px-8 py-2 rounded-full text-white font-black text-xl tracking-widest uppercase"
-        style={{
-          background: "linear-gradient(90deg, #2a1a5e, #3d2080, #2a1a5e)",
-          border: "1px solid rgba(150,100,255,0.5)",
-          letterSpacing: "0.15em",
-          fontFamily: "'Courier New', monospace",
-        }}>
-        {children}
+    <div>
+      <div className="flex justify-between items-center mb-1.5">
+        <span className="text-[11px] text-white/40 font-medium">{label}</span>
+        <span className={`text-[11px] font-bold font-mono ${text}`}>{value}%</span>
+      </div>
+      <div className="h-1 rounded-full bg-white/[0.06]">
+        <div className={`h-full rounded-full ${color} transition-all duration-700`}
+          style={{ width: `${value}%`, opacity: 0.7 }} />
       </div>
     </div>
   );
 }
 
-// ─── MetricBar ─────────────────────────────────────────────────────────────
-export function MetricBar({ label, value, highlight = false }) {
-  const color = value >= 70 ? "#4ade80" : value >= 40 ? "#facc15" : "#f87171";
-  return (
-    <div className="mb-3">
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-gray-300 text-xs font-medium">{label}</span>
-        <span className="text-xs font-bold" style={{ color }}>{value}%</span>
-      </div>
-      <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.1)" }}>
-        <div className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${value}%`, background: `linear-gradient(90deg, ${color}88, ${color})` }} />
-      </div>
-    </div>
-  );
-}
-
-// ─── MetricsSidebar ────────────────────────────────────────────────────────
+// ─── MetricsSidebar ──────────────────────────────────────────────────────
 export function MetricsSidebar({ metrics, currentScenario, totalScenarios, precision }) {
   return (
-    <div className="w-56 flex-shrink-0">
-      <div className="rounded-xl p-4"
-        style={{ background: "rgba(20,10,50,0.8)", border: "1px solid rgba(120,80,200,0.4)" }}>
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-white text-sm font-bold tracking-widest uppercase"
-            style={{ fontFamily: "'Courier New', monospace" }}>Métricas</span>
-          <div className="flex gap-1">
-            {["#ff6b8a","#ffd93d","#4ade80"].map(c => (
-              <div key={c} className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />
-            ))}
-          </div>
-        </div>
-        <MetricBar label="Reputação"    value={metrics.reputacao}    />
-        <MetricBar label="Cultura"      value={metrics.cultura}      />
-        <MetricBar label="Ética"        value={metrics.etica}        />
+    <div className="w-48 flex-shrink-0 hidden lg:block">
+      <div className="surface-card p-4 space-y-3">
+        <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest font-mono">Dashboard</p>
+        <MetricBar label="Reputacao"     value={metrics.reputacao} />
+        <MetricBar label="Cultura"       value={metrics.cultura} />
+        <MetricBar label="Etica"         value={metrics.etica} />
         <MetricBar label="Produtividade" value={metrics.produtividade} />
-        <div className="mt-4 pt-4 border-t border-white/10">
-          <div className="rounded-lg p-3 mb-2 text-center"
-            style={{ background: "rgba(255,255,255,0.05)" }}>
-            <p className="text-gray-400 text-xs mb-1">Precisão</p>
-            <p className="font-black text-2xl" style={{
-              color: precision >= 90 ? "#4ade80" : precision >= 60 ? "#facc15" : "#f87171",
-              fontFamily: "'Courier New', monospace"
-            }}>{precision}%</p>
-            <p className="text-gray-500 text-xs">Meta: 90%</p>
+
+        <div className="pt-3 border-t border-white/[0.06] space-y-2">
+          <div className="surface-elevated p-3 text-center">
+            <p className="text-[10px] text-white/30 mb-0.5">Precisao</p>
+            <p className={`text-xl font-bold font-mono ${
+              precision >= 90 ? "text-green-400" : precision >= 60 ? "text-yellow-400" : "text-red-400"
+            }`}>{precision}%</p>
           </div>
-          <div className="rounded-lg p-3 text-center"
-            style={{ background: "rgba(255,255,255,0.05)" }}>
-            <p className="text-gray-400 text-xs mb-1">Cenário</p>
-            <p className="text-white font-black text-xl"
-              style={{ fontFamily: "'Courier New', monospace" }}>
-              {currentScenario}/{totalScenarios}
-            </p>
+          <div className="surface-elevated p-3 text-center">
+            <p className="text-[10px] text-white/30 mb-0.5">Cenario</p>
+            <p className="text-white font-bold font-mono">{currentScenario}<span className="text-white/30">/{totalScenarios}</span></p>
           </div>
         </div>
       </div>
@@ -136,46 +82,78 @@ export function MetricsSidebar({ metrics, currentScenario, totalScenarios, preci
   );
 }
 
-// ─── ActionButton ──────────────────────────────────────────────────────────
+// ─── ActionButton ────────────────────────────────────────────────────────
 export function ActionButton({ children, onClick, variant = "primary", disabled = false, className = "" }) {
-  const base = "px-6 py-3 rounded-full font-bold text-white transition-all duration-200 cursor-pointer select-none";
-  const styles = {
-    primary: { background: "linear-gradient(90deg, #e53e3e, #ed8936)", boxShadow: "0 4px 20px rgba(229,62,62,0.4)" },
-    secondary: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)" },
-    ghost: { background: "transparent", border: "1px solid rgba(255,255,255,0.3)" },
+  const base = `inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
+    disabled ? "opacity-25 cursor-not-allowed pointer-events-none" : "cursor-pointer"
+  }`;
+  const variants = {
+    primary: `bg-accent-500 text-white hover:bg-accent-400 active:scale-[0.98] ${!disabled ? "shadow-lg shadow-accent-500/20" : ""}`,
+    secondary: `bg-white/[0.06] text-white/80 border border-white/[0.08] hover:bg-white/[0.1] hover:text-white`,
+    ghost: `bg-transparent text-white/50 border border-white/[0.1] hover:text-white/80 hover:border-white/[0.2]`,
   };
   return (
-    <button className={`${base} ${className} ${disabled ? "opacity-40 cursor-not-allowed" : "hover:scale-105 hover:brightness-110 active:scale-95"}`}
-      style={styles[variant]} onClick={disabled ? undefined : onClick}>
+    <button className={`${base} ${variants[variant]} ${className}`} onClick={disabled ? undefined : onClick}>
       {children}
     </button>
   );
 }
 
-// ─── OptionCard ────────────────────────────────────────────────────────────
+// ─── OptionCard ──────────────────────────────────────────────────────────
 export function OptionCard({ label, text, selected, onClick }) {
   return (
     <button onClick={onClick}
-      className="w-full text-left px-4 py-3 rounded-lg transition-all duration-200 hover:brightness-110"
-      style={{
-        background: selected ? "rgba(200,80,120,0.25)" : "rgba(255,255,255,0.05)",
-        border: `1px solid ${selected ? "rgba(220,100,140,0.7)" : "rgba(255,255,255,0.1)"}`,
-        boxShadow: selected ? "0 0 12px rgba(200,80,120,0.3)" : "none",
-      }}>
-      <span className="font-bold text-pink-300 mr-2">{label}.</span>
-      <span className="text-gray-200 text-sm">{text}</span>
+      className={`w-full text-left px-4 py-3.5 rounded-xl transition-all duration-150 ${
+        selected
+          ? "bg-accent-500/10 border border-accent-500/30"
+          : "surface-card hover:border-white/[0.12]"
+      }`}>
+      <span className={`font-bold mr-2 text-sm ${selected ? "text-accent-400" : "text-white/25"}`}>{label}</span>
+      <span className={`text-sm ${selected ? "text-white/90" : "text-white/55"}`}>{text}</span>
     </button>
   );
 }
 
-// ─── LoadingDots ───────────────────────────────────────────────────────────
+// ─── LoadingDots ─────────────────────────────────────────────────────────
 export function LoadingDots() {
   return (
-    <div className="flex gap-1 items-center px-2 py-1">
-      {[0, 1, 2].map(i => (
-        <div key={i} className="w-2 h-2 rounded-full bg-purple-400 animate-bounce"
-          style={{ animationDelay: `${i * 0.15}s` }} />
+    <div className="flex gap-1.5 items-center">
+      {[0,1,2].map(i => (
+        <div key={i} className="w-1.5 h-1.5 rounded-full bg-accent-500 animate-bounce" style={{ animationDelay: `${i*0.12}s` }} />
       ))}
+    </div>
+  );
+}
+
+// ─── StepIndicator ───────────────────────────────────────────────────────
+export function StepIndicator({ current, total }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex gap-1">
+        {Array.from({ length: total }, (_, i) => (
+          <div key={i} className={`w-6 h-0.5 rounded-full ${i < current ? "bg-accent-500" : "bg-white/10"}`} />
+        ))}
+      </div>
+      <span className="text-[11px] text-white/30 font-mono font-medium">Passo {current} de {total}</span>
+    </div>
+  );
+}
+
+// ─── GlassCard (kept for compat) ─────────────────────────────────────────
+export function GlassCard({ children, className = "" }) {
+  return <div className={`surface-card ${className}`}>{children}</div>;
+}
+
+// ─── GamePanel (kept for compat) ─────────────────────────────────────────
+export function GamePanel({ children, className = "" }) {
+  return <div className={`border-gradient rounded-2xl p-6 ${className}`}>{children}</div>;
+}
+
+// ─── PanelTitle (kept for compat) ────────────────────────────────────────
+export function PanelTitle({ children }) {
+  return (
+    <div className="flex justify-center mb-8">
+      <span className="text-xs font-bold text-accent-400 uppercase tracking-[0.2em] font-mono">{children}</span>
     </div>
   );
 }

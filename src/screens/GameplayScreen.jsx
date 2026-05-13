@@ -1,228 +1,183 @@
 import { useState, useEffect } from "react";
-import { NavBar, GamePanel, MetricsSidebar, ActionButton, OptionCard, LoadingDots } from "../components/UI";
+import { MetricsSidebar, ActionButton, OptionCard, LoadingDots } from "../components/UI";
 import { generateScenario, evaluateChoice, evaluateTextResponse } from "../hooks/useClaudeAI";
 
-// States do gameplay
-const STATE = {
-  LOADING_SCENARIO: "loading_scenario",
-  CHOOSING:         "choosing",
-  TEXT_INPUT:       "text_input",
-  EVALUATING:       "evaluating",
-  FEEDBACK:         "feedback",
+const S = { LOADING: 0, CHOOSING: 1, TEXT: 2, EVALUATING: 3, FEEDBACK: 4 };
+
+const REACTIONS = {
+  good: ["😎", "🔥", "💪", "🎯", "👏"],
+  bad:  ["😬", "💀", "🫠", "😵", "🫣"],
 };
 
-export default function GameplayScreen({ gameState, updateGameState, updateMetrics, navigate, SCREENS, onNavigate, activePage }) {
-  const [uiState, setUiState]       = useState(STATE.LOADING_SCENARIO);
-  const [scenario, setScenario]     = useState(null);
-  const [selected, setSelected]     = useState(null);
-  const [textInput, setTextInput]   = useState("");
-  const [feedback, setFeedback]     = useState(null);
-  const [error, setError]           = useState(null);
+export default function GameplayScreen({ gameState, updateGameState, updateMetrics, navigate, SCREENS }) {
+  const [state, setState]       = useState(S.LOADING);
+  const [scenario, setScenario] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [text, setText]         = useState("");
+  const [feedback, setFeedback] = useState(null);
+  const [error, setError]       = useState(null);
+  const [reaction, setReaction] = useState(null);
 
-  // Load first scenario on mount
-  useEffect(() => { loadScenario(); }, []);
+  useEffect(() => { load(); }, []);
 
-  const loadScenario = async () => {
-    setUiState(STATE.LOADING_SCENARIO);
-    setSelected(null);
-    setTextInput("");
-    setFeedback(null);
-    setError(null);
+  const load = async () => {
+    setState(S.LOADING); setSelected(null); setText(""); setFeedback(null); setError(null); setReaction(null);
     try {
       const s = await generateScenario(gameState, gameState.currentScenario);
       setScenario(s);
-      setUiState(s.isCritical ? STATE.TEXT_INPUT : STATE.CHOOSING);
-    } catch (e) {
-      setError("Erro ao carregar cenário. Verifique sua conexão.");
-    }
+      setState(s.isCritical ? S.TEXT : S.CHOOSING);
+    } catch { setError("Erro ao carregar. Verifique a conexao."); }
   };
 
-  const handleSubmitChoice = async () => {
+  const submitChoice = async () => {
     if (!selected) return;
-    setUiState(STATE.EVALUATING);
+    setState(S.EVALUATING);
     try {
-      const eval_ = await evaluateChoice(gameState, scenario.situation, selected);
-      setFeedback(eval_);
-      updateMetrics(eval_.metricsDelta ?? {});
-      updateGameState({
-        precision: Math.min(100, Math.max(0, gameState.precision + (eval_.precisionDelta ?? 0))),
-        scenarioHistory: [...gameState.scenarioHistory, {
-          prompt: scenario.situation,
-          answer: `${selected.id}. ${selected.text}`,
-          evaluation: eval_,
-        }],
-      });
-      setUiState(STATE.FEEDBACK);
-    } catch (e) {
-      setError("Erro ao avaliar resposta. Tente novamente.");
-      setUiState(STATE.CHOOSING);
-    }
+      const ev = await evaluateChoice(gameState, scenario.situation, selected);
+      applyResult(ev, `${selected.id}. ${selected.text}`);
+    } catch { setError("Erro ao avaliar."); setState(S.CHOOSING); }
   };
 
-  const handleSubmitText = async () => {
-    if (!textInput.trim()) return;
-    setUiState(STATE.EVALUATING);
+  const submitText = async () => {
+    if (!text.trim()) return;
+    setState(S.EVALUATING);
     try {
-      const eval_ = await evaluateTextResponse(gameState, scenario.situation, textInput);
-      setFeedback(eval_);
-      updateMetrics(eval_.metricsDelta ?? {});
-      updateGameState({
-        precision: Math.min(100, Math.max(0, gameState.precision + (eval_.precisionDelta ?? 0))),
-        scenarioHistory: [...gameState.scenarioHistory, {
-          prompt: scenario.situation,
-          answer: textInput,
-          evaluation: eval_,
-        }],
-      });
-      setUiState(STATE.FEEDBACK);
-    } catch (e) {
-      setError("Erro ao avaliar resposta. Tente novamente.");
-      setUiState(STATE.TEXT_INPUT);
-    }
+      const ev = await evaluateTextResponse(gameState, scenario.situation, text);
+      applyResult(ev, text);
+    } catch { setError("Erro ao avaliar."); setState(S.TEXT); }
   };
 
-  const handleNext = () => {
-    const nextScenario = gameState.currentScenario + 1;
-    if (nextScenario >= gameState.totalScenarios) {
-      navigate(SCREENS.RESULT);
-    } else {
-      updateGameState({ currentScenario: nextScenario });
-      loadScenario();
-    }
+  const applyResult = (ev, answer) => {
+    setFeedback(ev);
+    const list = ev.isCorrect ? REACTIONS.good : REACTIONS.bad;
+    setReaction(list[Math.floor(Math.random() * list.length)]);
+    updateMetrics(ev.metricsDelta ?? {});
+    updateGameState({
+      precision: Math.min(100, Math.max(0, gameState.precision + (ev.precisionDelta ?? 0))),
+      scenarioHistory: [...gameState.scenarioHistory, { prompt: scenario.situation, answer, evaluation: ev }],
+    });
+    setState(S.FEEDBACK);
   };
 
-  const isCritical = scenario?.isCritical;
+  const next = () => {
+    const n = gameState.currentScenario + 1;
+    if (n >= gameState.totalScenarios) navigate(SCREENS.RESULT);
+    else { updateGameState({ currentScenario: n }); load(); }
+  };
+
+  const critical = scenario?.isCritical;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <NavBar onNavigate={onNavigate} activePage={activePage} />
-      <div className="flex-1 flex gap-6 px-8 pt-24 pb-8 max-w-6xl mx-auto w-full">
+    <div className="min-h-screen flex flex-col lg:flex-row gap-6 px-6 pt-24 pb-8 max-w-5xl mx-auto w-full">
+      <div className="flex-1 surface-card p-5 flex flex-col min-h-[500px]">
+        {/* Progress bar */}
+        <div className="flex items-center gap-2 mb-5">
+          <span className="text-[11px] text-white/25 font-mono">Cenario {gameState.currentScenario + 1}/{gameState.totalScenarios}</span>
+          <div className="flex-1 h-1 rounded-full bg-white/[0.06]">
+            <div className="h-full rounded-full bg-accent-500/60 transition-all duration-500"
+              style={{ width: `${((gameState.currentScenario) / gameState.totalScenarios) * 100}%` }} />
+          </div>
+        </div>
 
-        {/* Main panel */}
-        <GamePanel className="flex-1 flex flex-col p-6">
+        {error && (
+          <div className="mb-4 p-3 rounded-xl text-sm text-red-400 bg-red-500/[0.06] border border-red-500/15">
+            {error}
+            <button onClick={load} className="ml-2 underline opacity-70 hover:opacity-100">Tentar novamente</button>
+          </div>
+        )}
 
-          {/* Error */}
-          {error && (
-            <div className="mb-4 p-3 rounded-lg text-red-300 text-sm"
-              style={{ background: "rgba(200,50,50,0.2)", border: "1px solid rgba(200,50,50,0.4)" }}>
-              {error}
-              <button onClick={loadScenario} className="ml-3 underline text-red-200">Tentar novamente</button>
-            </div>
-          )}
+        {state === S.LOADING && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <LoadingDots />
+            <p className="text-sm text-white/25">Gerando cenario...</p>
+          </div>
+        )}
 
-          {/* Loading scenario */}
-          {uiState === STATE.LOADING_SCENARIO && (
-            <div className="flex-1 flex flex-col items-center justify-center gap-4">
-              <LoadingDots />
-              <p className="text-white/40 text-sm">Gerando cenário...</p>
-            </div>
-          )}
-
-          {/* Scenario card */}
-          {scenario && uiState !== STATE.LOADING_SCENARIO && (
-            <>
-              <div className="rounded-xl p-5 mb-6 flex gap-4"
-                style={{
-                  background: isCritical ? "rgba(200,50,80,0.15)" : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${isCritical ? "rgba(220,80,100,0.5)" : "rgba(255,255,255,0.1)"}`,
-                }}>
-                <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
-                  style={{ background: "rgba(255,255,255,0.05)" }}>
-                  {isCritical ? "⚠️" : "💼"}
+        {scenario && state !== S.LOADING && (
+          <>
+            {/* Scenario */}
+            <div className={`rounded-xl p-5 mb-5 animate-in ${
+              critical ? "bg-red-500/[0.04] border border-red-500/15" : "surface-elevated"
+            }`}>
+              {critical && (
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest font-mono animate-glow">Momento critico</span>
+                  <span className="text-xs">✍️</span>
                 </div>
-                <div>
-                  {isCritical && (
-                    <p className="text-pink-400 text-xs font-bold uppercase tracking-widest mb-1"
-                      style={{ fontFamily: "'Courier New', monospace" }}>
-                      Momento crítico
-                    </p>
-                  )}
-                  <p className="text-gray-200 text-sm leading-relaxed">{scenario.situation}</p>
+              )}
+              <p className="text-sm text-white/70 leading-relaxed">{scenario.situation}</p>
+            </div>
+
+            {/* Choice */}
+            {state === S.CHOOSING && (
+              <div className="flex flex-col gap-2.5 flex-1">
+                {scenario.options?.map(o => <OptionCard key={o.id} label={o.id} text={o.text} selected={selected?.id===o.id} onClick={()=>setSelected(o)} />)}
+                <div className="mt-auto pt-4 flex justify-end">
+                  <ActionButton onClick={submitChoice} disabled={!selected}>Confirmar</ActionButton>
                 </div>
               </div>
+            )}
 
-              {/* Multiple choice */}
-              {uiState === STATE.CHOOSING && (
-                <div className="flex flex-col gap-3 flex-1">
-                  {scenario.options?.map((opt) => (
-                    <OptionCard key={opt.id} label={opt.id} text={opt.text}
-                      selected={selected?.id === opt.id}
-                      onClick={() => setSelected(opt)} />
-                  ))}
-                  <div className="mt-auto pt-4 flex justify-end">
-                    <ActionButton onClick={handleSubmitChoice} disabled={!selected}>
-                      Confirmar →
-                    </ActionButton>
-                  </div>
+            {/* Text */}
+            {state === S.TEXT && (
+              <div className="flex flex-col gap-4 flex-1">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-accent-400 text-xs">✍️</span>
+                  <p className="text-xs text-white/40">Sua vez — escreva o que voce diria ou faria nessa situacao:</p>
                 </div>
-              )}
-
-              {/* Free text */}
-              {uiState === STATE.TEXT_INPUT && (
-                <div className="flex flex-col gap-4 flex-1">
-                  <p className="text-white/50 text-sm">Justifique sua decisão em texto:</p>
-                  <textarea
-                    className="flex-1 min-h-32 p-4 rounded-xl text-sm text-gray-200 resize-none outline-none"
-                    style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                    }}
-                    placeholder="Escreva sua resposta aqui. A IA vai avaliar o tom e a eficácia..."
-                    value={textInput}
-                    onChange={(e) => setTextInput(e.target.value)}
-                  />
-                  <div className="flex justify-end">
-                    <ActionButton onClick={handleSubmitText} disabled={textInput.trim().length < 10}>
-                      Enviar resposta
-                    </ActionButton>
-                  </div>
+                <textarea className="flex-1 min-h-32 p-4 rounded-xl text-sm text-white/75 resize-none bg-white/[0.03] border border-white/[0.08] focus:border-accent-500/40 transition-colors placeholder-white/15"
+                  placeholder="O que voce faria? Fale como se estivesse la..."
+                  value={text} onChange={e => setText(e.target.value)} />
+                <p className="text-[10px] text-white/20 text-right">{text.trim().length < 10 ? `minimo 10 caracteres (${text.trim().length})` : `${text.trim().length} caracteres — pode enviar!`}</p>
+                <div className="flex justify-end">
+                  <ActionButton onClick={submitText} disabled={text.trim().length < 10}>Enviar minha resposta</ActionButton>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Evaluating */}
-              {uiState === STATE.EVALUATING && (
-                <div className="flex-1 flex flex-col items-center justify-center gap-4">
-                  <LoadingDots />
-                  <p className="text-white/40 text-sm">A IA está avaliando sua resposta...</p>
-                </div>
-              )}
+            {/* Evaluating */}
+            {state === S.EVALUATING && (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                <LoadingDots />
+                <p className="text-sm text-white/25">A IA esta julgando voce...</p>
+              </div>
+            )}
 
-              {/* Feedback */}
-              {uiState === STATE.FEEDBACK && feedback && (
-                <div className="flex flex-col gap-4 flex-1">
-                  <div className="rounded-xl p-5"
-                    style={{
-                      background: feedback.isCorrect ? "rgba(80,200,120,0.1)" : "rgba(200,80,100,0.1)",
-                      border: `1px solid ${feedback.isCorrect ? "rgba(80,200,120,0.4)" : "rgba(200,80,100,0.4)"}`,
-                    }}>
-                    <p className="font-bold text-sm mb-2"
-                      style={{ color: feedback.isCorrect ? "#4ade80" : "#f87171" }}>
-                      {feedback.isCorrect ? "✓ Boa decisão!" : "✗ Poderia ter ido melhor"}
-                      {feedback.tone && ` · Tom: ${feedback.tone}`}
-                    </p>
-                    <p className="text-gray-300 text-sm leading-relaxed">{feedback.feedback}</p>
+            {/* Feedback */}
+            {state === S.FEEDBACK && feedback && (
+              <div className="flex flex-col gap-4 flex-1 animate-in">
+                <div className={`rounded-xl p-5 ${
+                  feedback.isCorrect ? "bg-green-500/[0.05] border border-green-500/15" : "bg-red-500/[0.05] border border-red-500/15"
+                }`}>
+                  <div className="flex items-start gap-3 mb-2">
+                    <span className="text-2xl">{reaction}</span>
+                    <div>
+                      <p className={`text-sm font-semibold ${feedback.isCorrect ? "text-green-400" : "text-red-400"}`}>
+                        {feedback.isCorrect ? "Boa jogada" : "Ops..."}
+                        {feedback.tone && <span className="text-white/20 font-normal ml-2 text-xs">tom: {feedback.tone}</span>}
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-auto flex justify-end">
-                    <ActionButton onClick={handleNext}>
-                      {gameState.currentScenario + 1 >= gameState.totalScenarios
-                        ? "Ver resultado final →"
-                        : "Próximo cenário →"}
-                    </ActionButton>
-                  </div>
+                  <p className="text-sm text-white/55 leading-relaxed ml-10">{feedback.feedback}</p>
+                  {feedback.suggestion && (
+                    <div className="ml-10 mt-3 px-3 py-2 rounded-lg bg-accent-500/[0.06] border border-accent-500/15">
+                      <p className="text-[11px] text-accent-400/60 mb-0.5 font-mono">💡 O ideal seria:</p>
+                      <p className="text-xs text-white/40">{feedback.suggestion}</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </>
-          )}
-        </GamePanel>
-
-        {/* Sidebar */}
-        <MetricsSidebar
-          metrics={gameState.metrics}
-          currentScenario={gameState.currentScenario + 1}
-          totalScenarios={gameState.totalScenarios}
-          precision={gameState.precision}
-        />
+                <div className="mt-auto flex justify-end">
+                  <ActionButton onClick={next}>
+                    {gameState.currentScenario + 1 >= gameState.totalScenarios ? "Ver meu destino →" : "Proximo →"}
+                  </ActionButton>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
+
+      <MetricsSidebar metrics={gameState.metrics} currentScenario={gameState.currentScenario + 1} totalScenarios={gameState.totalScenarios} precision={gameState.precision} />
     </div>
   );
 }
