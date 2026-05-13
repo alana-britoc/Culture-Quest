@@ -1,4 +1,6 @@
-const BACKEND_URL = "http://localhost:3001/api/chat";
+const BACKEND_URL = window.location.hostname === "localhost"
+  ? "http://localhost:3001/api/chat"
+  : "/api/chat";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
