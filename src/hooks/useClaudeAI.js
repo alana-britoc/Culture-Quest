@@ -36,7 +36,8 @@ function buildContext(gameState) {
 Você é o NARRADOR do jogo Culture Quest. Você é SARCASTICO, ENGRAÇADO e PONTUAL.
 Você mistura situações sérias de negócios com eventos cômicos do dia a dia corporativo.
 É como se fosse um narrador de reality show + podcast de humor corporativo.
-Use gírias corporativas brasileiras com ironia (sinergia, alinhar, tocar base, low-hanging fruit).
+Use linguagem natural e brasileira, mas NÃO force gírias corporativas — use com moderação.
+Seja criativo e variado. Evite repetir os mesmos temas e situações.
 Arquétipo do jogador: ${archetypeMap[gameState.archetype] ?? gameState.archetype}
 Empresa: ${gameState.companySize} porte, setor de ${gameState.sector}
 Métricas atuais: Reputação ${gameState.metrics.reputacao}%, Cultura ${gameState.metrics.cultura}%,
@@ -83,9 +84,10 @@ export async function generateScenario(gameState, scenarioIndex) {
 Você gera dilemas corporativos realistas em JSON. Responda APENAS com JSON válido, sem markdown, sem texto extra.`;
 
   const user = `Gere o dilema ${scenarioIndex + 1} de ${gameState.totalScenarios}.
-Varie o tema: conflito de equipe, prazo impossível, ética questionável, communication fail, geladeira do escritório, WhatsApp do grupo errado, reunião que poderia ser email.
-Misture humor com seriedade. Situações como: roubaram sua marmita, mandou mensagem pro grupo errado, chefe pediu algo antiético, deadline de ontem, feedback de 360° foi brutal.
-Use linguagem informal e divertida.
+Varie o TEMA a cada cenário. NÃO repita situações de cenarios anteriores. Use temas como: conflito interpessoal, prazos absurdos, ética no trabalho, falha de comunicação, política de escritório, reuniões inúteis, feedback inesperado, festas de escritório, home office vs presencial, promoções injustas, competição entre colegas, gestão de crise, relações com clientes, dress code, benefícios duvidosos, treinamentos obrigatórios.
+Seja CRIATIVO e surpreendente. Cada cenário deve ser único e inesperado.
+Misture humor com seriedade de forma natural.
+${gameState.scenarioHistory?.length > 0 ? `Temas já usados (NÃO repita): ${gameState.scenarioHistory.map(h => h.prompt).join(" | ")}` : ""}
 
 Formato obrigatório:
 {
@@ -114,8 +116,7 @@ Você avalia decisões corporativas. Responda APENAS com JSON válido, sem markd
   const user = `Situação: "${situation}"
 Resposta do jogador: "${chosenOption.id}. ${chosenOption.text}"
 
-Avalie com HUMOR. O feedback deve ser divertido, sarcástico mas útil.
-Use expressões como "hmm ousado", "jogada de mestre", "o RH vai adorar essa", "isso vai dar retrabalho".
+Avalie com HUMOR. O feedback deve ser divertido, sarcástico mas útil. Varie o estilo do feedback — às vezes sarcástico, às vezes encorajador, às vezes chocada.
 Retorne:
 {
   "feedback": "Comentário de 1-2 frases DIVERTIDO sobre a escolha",
@@ -143,7 +144,7 @@ Responda APENAS com JSON válido, sem markdown.`;
   const user = `Momento crítico: "${situation}"
 Texto do jogador: "${playerText}"
 
-Analise com sarcasmo e humor. Identifique o tom — é passivo-agressivo? É "obrigado pelo feedback" energy?
+Analise com sarcasmo e humor. Identifique o tom — é passivo-agressivo? É corporativês vazio? Tem coragem de verdade?
 Retorne:
 {
   "feedback": "Análise de 2-3 frases DIVERTIDA sobre o texto, destacando pontos fortes e fracos",
